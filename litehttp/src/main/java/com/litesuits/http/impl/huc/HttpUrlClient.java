@@ -1,13 +1,18 @@
 package com.litesuits.http.impl.huc;
 
 import android.util.Log;
+
 import com.litesuits.http.HttpClient;
 import com.litesuits.http.HttpConfig;
 import com.litesuits.http.data.Charsets;
 import com.litesuits.http.data.Consts;
 import com.litesuits.http.data.HttpStatus;
 import com.litesuits.http.data.NameValuePair;
-import com.litesuits.http.exception.*;
+import com.litesuits.http.exception.HttpClientException;
+import com.litesuits.http.exception.HttpNetException;
+import com.litesuits.http.exception.HttpServerException;
+import com.litesuits.http.exception.NetException;
+import com.litesuits.http.exception.ServerException;
 import com.litesuits.http.listener.StatisticsListener;
 import com.litesuits.http.log.HttpLog;
 import com.litesuits.http.parser.DataParser;
@@ -16,18 +21,29 @@ import com.litesuits.http.request.content.HttpBody;
 import com.litesuits.http.request.param.HttpMethods;
 import com.litesuits.http.response.InternalResponse;
 
-import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * @author 氢一 @http://def.so
@@ -69,6 +85,7 @@ public class HttpUrlClient implements HttpClient {
         StatisticsListener statistic = response.getStatistics();
         try {
             // 0. build URL
+            //Todo  这里增加post的情况就把param放到消息体里
             URL url = new URL(request.createFullUri());
 
             // 1. open connection and set SSL factory and hostname verifier.
@@ -254,6 +271,9 @@ public class HttpUrlClient implements HttpClient {
         HttpMethods method = request.getMethod();
         if (method == HttpMethods.Post || method == HttpMethods.Put || method == HttpMethods.Patch) {
             HttpBody body = request.getHttpBody();
+            if(body==null){
+                body=request.createHttpBody();
+            }
             if (body != null) {
                 connection.setDoOutput(true);
                 connection.setRequestProperty(Consts.CONTENT_TYPE, body.getContentType());
@@ -270,8 +290,8 @@ public class HttpUrlClient implements HttpClient {
             // Create a trust manager that does not validate certificate chains
             // Android use X509 cert
             TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                    return new java.security.cert.X509Certificate[]{};
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[]{};
                 }
 
                 public void checkClientTrusted(X509Certificate[] chain,

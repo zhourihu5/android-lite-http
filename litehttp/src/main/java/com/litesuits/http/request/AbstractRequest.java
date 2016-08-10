@@ -1,7 +1,18 @@
 package com.litesuits.http.request;
 
 import android.net.Uri;
-import com.litesuits.http.annotation.*;
+
+import com.litesuits.http.annotation.HttpBaseUrl;
+import com.litesuits.http.annotation.HttpCacheExpire;
+import com.litesuits.http.annotation.HttpCacheKey;
+import com.litesuits.http.annotation.HttpCacheMode;
+import com.litesuits.http.annotation.HttpCharSet;
+import com.litesuits.http.annotation.HttpID;
+import com.litesuits.http.annotation.HttpMaxRedirect;
+import com.litesuits.http.annotation.HttpMaxRetry;
+import com.litesuits.http.annotation.HttpMethod;
+import com.litesuits.http.annotation.HttpTag;
+import com.litesuits.http.annotation.HttpUri;
 import com.litesuits.http.data.Consts;
 import com.litesuits.http.data.NameValuePair;
 import com.litesuits.http.exception.ClientException;
@@ -14,7 +25,11 @@ import com.litesuits.http.request.content.HttpBody;
 import com.litesuits.http.request.content.StringBody;
 import com.litesuits.http.request.content.UrlEncodedFormBody;
 import com.litesuits.http.request.content.multi.MultipartBody;
-import com.litesuits.http.request.param.*;
+import com.litesuits.http.request.param.CacheMode;
+import com.litesuits.http.request.param.HttpMethods;
+import com.litesuits.http.request.param.HttpParamModel;
+import com.litesuits.http.request.param.HttpReplace;
+import com.litesuits.http.request.param.HttpRichParamModel;
 import com.litesuits.http.request.query.JsonQueryBuilder;
 import com.litesuits.http.request.query.ModelQueryBuilder;
 import com.litesuits.http.utils.HexUtil;
@@ -517,7 +532,10 @@ public abstract class AbstractRequest<T> {
             if (paramModel instanceof HttpRichParamModel && !((HttpRichParamModel) paramModel).isFieldsAttachToUrl()) {
                 return map;
             }
-            map.putAll(getQueryBuilder().buildPrimaryMap(paramModel));
+            //Todo 如果是post就放到消息体里
+            if(method== HttpMethods.Get){
+                map.putAll(getQueryBuilder().buildPrimaryMap(paramModel));
+            }
         }
         return map;
     }
@@ -560,7 +578,20 @@ public abstract class AbstractRequest<T> {
         this.cancel.set(true);
     }
 
-
+    //TODO 对post特殊处理
+    public HttpBody createHttpBody() {
+        if(httpBody!=null){
+            return httpBody;
+        }
+        try {
+            if(getQueryBuilder()!=null){
+                return getQueryBuilder().buildHttpbody(paramModel);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return httpBody;
+    }
     public String createFullUri() throws HttpClientException {
         if (uri == null || !uri.startsWith(Consts.SCHEME_HTTP)) {
             if (baseUrl == null) {
